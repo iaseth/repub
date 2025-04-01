@@ -60,12 +60,16 @@ def remove_font_styles(css_file):
 	css_content = re.sub(r'font-family:\s*[^;]+;', '', css_content, flags=re.IGNORECASE)
 
 	new_size = len(css_content)
+	if new_size == old_size:
+		print(f"\t\t\tSkipped CSS: already optimized!")
+		return 0
+
 	with open(css_file, 'w', encoding='utf-8') as file:
 		file.write(css_content)
 
 	saved_bytes = old_size - new_size
 	saved_percent = 100 * saved_bytes / old_size
-	print(f"\t\tReduced CSS: {green(os.path.basename(css_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
+	print(f"\t\t\tReduced CSS: {green(os.path.basename(css_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 	return saved_bytes
 
 
@@ -92,9 +96,13 @@ def remove_custom_fonts(opf_file):
 	tree.write(opf_file, encoding='utf-8', xml_declaration=True)
 	new_size = os.path.getsize(opf_file)
 
-	saved = old_size - new_size
-	saved_percent = 100 * saved / old_size
-	print(f"\t\tReduced OPF: {green(os.path.basename(opf_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
+	saved_bytes = old_size - new_size
+	if saved_bytes == 0:
+		print(f"\t\t\tSkipped OPF: already optimized")
+		return []
+
+	saved_percent = 100 * saved_bytes / old_size
+	print(f"\t\t\tReduced OPF: {green(os.path.basename(opf_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 
 	return font_files
 
@@ -106,7 +114,7 @@ def process_epub(epub_path, replace=False):
 	if not epub_path.endswith('.epub'):
 		print(f"Bad path: {red(epub_path)}"); return
 
-	print(f"Found EPUB: {green(epub_path)}")
+	print(f"\tFound EPUB: {green(epub_path)}")
 
 	base_name = os.path.splitext(epub_path)[0]
 	lean_epub_path = epub_path if replace else f"{base_name}-lean.epub"
@@ -130,19 +138,19 @@ def process_epub(epub_path, replace=False):
 				css_files.append(path)
 
 	if opf_file:
-		print(f"\tCleaning OPF file:")
+		print(f"\t\tCleaning OPF file:")
 		font_files = remove_custom_fonts(opf_file)
 
 	if len(css_files) > 0:
-		print(f"\tCleaning {len(css_files)} CSS files:")
+		print(f"\t\tCleaning {len(css_files)} CSS files:")
 		saved_bytes = 0
 		for css_file in css_files:
 			saved_bytes += remove_font_styles(css_file)
-		print(f"\t\t\tSaved {saved_bytes/1024:.1f} KB")
+		print(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	# Delete font files
 	if len(font_files) > 0:
-		print(f"\tCleaning {len(font_files)} Font files:")
+		print(f"\t\tCleaning {len(font_files)} Font files:")
 		saved_bytes = 0
 
 		for font_file in enumerate(font_files):
@@ -152,9 +160,9 @@ def process_epub(epub_path, replace=False):
 						font_path = os.path.join(root, file)
 						size = os.path.getsize(font_path)
 						os.remove(font_path)
-						print(f"\t\tRemoved font: {green(os.path.basename(font_path))} ({size/1024:.1f} KB)")
+						print(f"\t\t\tRemoved font: {green(os.path.basename(font_path))} ({size/1024:.1f} KB)")
 						saved_bytes += size
-		print(f"\t\t\tSaved {saved_bytes/1024:.1f} KB")
+		print(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	original_size = os.path.getsize(epub_path)
 	# Create new EPUB
@@ -167,16 +175,16 @@ def process_epub(epub_path, replace=False):
 
 	# Clean up
 	shutil.rmtree(temp_dir)
-	print(f"Saved: {green(lean_epub_path)}")
+	print(f"\tSaved: {green(lean_epub_path)}")
 
 	# Compare sizes
 	new_size = os.path.getsize(lean_epub_path)
 	space_saved = original_size - new_size
 	percentage_saved = (space_saved / original_size) * 100
 
-	print(f"\tOriginal EPUB size: {original_size / 1024:.2f} KB")
-	print(f"\t    Lean EPUB size: {new_size / 1024:.2f} KB")
-	print(f"\t Total space saved: {space_saved / 1024:.2f} KB ({percentage_saved:.1f}%)")
+	print(f"\t\tOriginal EPUB size: {original_size / 1024:.2f} KB")
+	print(f"\t\t    Lean EPUB size: {new_size / 1024:.2f} KB")
+	print(f"\t\t Total space saved: {space_saved / 1024:.2f} KB ({percentage_saved:.1f}%)")
 
 
 def get_epub_file_paths(directory: str, recursive: bool = False) -> List[str]:
