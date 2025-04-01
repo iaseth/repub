@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 from typing import List
 
+from PIL import Image
+
 
 
 def _colorize(color_code, *args, sep=' '):
@@ -48,7 +50,19 @@ def verbose(*args, **kwargs):
 
 
 
+def get_image_resolution(image_path):
+	"""Returns the resolution (width, height) of a JPG/JPEG image."""
+	try:
+		with Image.open(image_path) as img:
+			return img.size  # (width, height)
+	except Exception as e:
+		print(f"Error opening {image_path}: {e}")
+		return None
+
+
+
 def remove_font_styles(css_file):
+	filename = os.path.basename(css_file)
 	with open(css_file, 'r', encoding='utf-8') as file:
 		css_content = file.read()
 
@@ -61,7 +75,7 @@ def remove_font_styles(css_file):
 
 	new_size = len(css_content)
 	if new_size == old_size:
-		print(f"\t\t\tSkipped CSS: already optimized!")
+		print(f"\t\t\tSkipped CSS: {yellow(filename)} already optimized!")
 		return 0
 
 	with open(css_file, 'w', encoding='utf-8') as file:
@@ -69,11 +83,12 @@ def remove_font_styles(css_file):
 
 	saved_bytes = old_size - new_size
 	saved_percent = 100 * saved_bytes / old_size
-	print(f"\t\t\tReduced CSS: {green(os.path.basename(css_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
+	print(f"\t\t\tReduced CSS: {green(filename)} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 	return saved_bytes
 
 
 def remove_custom_fonts(opf_file):
+	filename = os.path.basename(opf_file)
 	old_size = os.path.getsize(opf_file)
 	tree = ET.parse(opf_file)
 	root = tree.getroot()
@@ -98,7 +113,7 @@ def remove_custom_fonts(opf_file):
 
 	saved_bytes = old_size - new_size
 	if saved_bytes == 0:
-		print(f"\t\t\tSkipped OPF: already optimized")
+		print(f"\t\t\tSkipped OPF: {yellow(filename)} already optimized")
 		return []
 
 	saved_percent = 100 * saved_bytes / old_size
@@ -107,7 +122,33 @@ def remove_custom_fonts(opf_file):
 	return font_files
 
 
-def process_epub(epub_path, replace=False):
+def compress_image(image_file, idx=0, max_image_pixels=720):
+	"""Compresses the image to the specified size (width, height) in place."""
+	filename = os.path.basename(image_file)
+	size = get_image_resolution(image_file)
+	width, height = size
+
+	big_size = max(width, height)
+	needs_compression = big_size > max_image_pixels
+
+	if needs_compression:
+		scale_factor = max_image_pixels / big_size
+		width_after = int(width * scale_factor)
+		height_after = int(height * scale_factor)
+		size_after = (width_after, height_after)
+
+		try:
+			with Image.open(image_file) as img:
+				img = img.resize(size_after, Image.LANCZOS)
+				img.save(image_file, optimize=True, quality=85)
+			print(f"\t\t\t{idx:3}. Compressed image {green(filename):20} => {size} to {size_after}")
+		except Exception as e:
+			print(f"\t\t\t{idx:3}. Error compressing {red(filename)}: {e}")
+	else:
+		print(f"\t\t\t{idx:3}. Skipped image {yellow(filename):20} => {size}")
+
+
+def process_epub(epub_path, replace=False, max_image_pixels=720):
 	if not os.path.isfile(epub_path):
 		print(f"Not found: {red(epub_path)}"); return
 
@@ -126,6 +167,7 @@ def process_epub(epub_path, replace=False):
 
 	# Identify CSS and OPF files
 	opf_file = None
+	image_files = []
 	css_files = []
 	font_files = []
 
@@ -134,6 +176,8 @@ def process_epub(epub_path, replace=False):
 			path = os.path.join(root, file)
 			if file.endswith('.opf'):
 				opf_file = path
+			elif file.endswith('.jpg') or file.endswith('.jpeg'):
+				image_files.append(path)
 			elif file.endswith('.css'):
 				css_files.append(path)
 
@@ -163,6 +207,11 @@ def process_epub(epub_path, replace=False):
 						print(f"\t\t\tRemoved font: {green(os.path.basename(font_path))} ({size/1024:.1f} KB)")
 						saved_bytes += size
 		print(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
+
+	if len(image_files) > 0 and max_image_pixels is not None:
+		print(f"\t\tCleaning {len(image_files)} Image files:")
+		for idx, image_file in enumerate(image_files, start=1):
+			compress_image(image_file, idx=idx, max_image_pixels=max_image_pixels)
 
 	original_size = os.path.getsize(epub_path)
 	# Create new EPUB
