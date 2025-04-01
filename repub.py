@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-import zipfile
+import argparse
 import os
-import shutil
 import re
-import xml.etree.ElementTree as ET
+import shutil
 import sys
+import xml.etree.ElementTree as ET
+import zipfile
+from typing import List
 
 
 
@@ -38,6 +40,11 @@ def white(*args, sep=' '):
 
 def normal(*args, sep=' '):
 	return sep.join(map(str, args))
+
+
+def verbose(*args, **kwargs):
+	if cmd_args.verbose:
+		print(*args, **kwargs)
 
 
 
@@ -172,14 +179,53 @@ def process_epub(epub_path, replace=False):
 	print(f"\t Total space saved: {space_saved / 1024:.2f} KB ({percentage_saved:.1f}%)")
 
 
-def main():
-	args = sys.argv[1:]
-	if len(args) == 0:
-		print("Usage:\n\tpython3 repub.py <ebook1.epub> <ebook2.epub> . . ."); return
+def get_epub_file_paths(directory: str, recursive: bool = False) -> List[str]:
+	if recursive:
+		return [os.path.join(root, file)
+				for root, _, files in os.walk(directory)
+				for file in files if file.lower().endswith('.epub')]
+	else:
+		return [os.path.join(directory, file)
+				for file in os.listdir(directory)
+				if os.path.isfile(os.path.join(directory, file)) and file.lower().endswith('.epub')]
 
-	replace = False
-	for epub_path in args:
-		process_epub(epub_path, replace=replace)
+
+
+def main():
+	parser = argparse.ArgumentParser(description="repub.py - remove custom fonts from EPUB ebooks")
+
+	# Positional argument: Path
+	parser.add_argument("path", type=str, help="Path to the file or directory")
+
+	# Boolean flags with short and long options
+	parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+	parser.add_argument("-D", "--directory", action="store_true", help="Process directories as well")
+	parser.add_argument("-R", "--recursive", action="store_true", help="Process directories recursively")
+	parser.add_argument("-r", "--replace", action="store_true", help="Replace original files")
+
+	global cmd_args
+	cmd_args = parser.parse_args()
+	verbose(cmd_args)
+
+	if os.path.isfile(cmd_args.path):
+		process_epub(cmd_args.path, replace=cmd_args.replace)
+	elif os.path.isdir(cmd_args.path):
+		if cmd_args.directory:
+			if cmd_args.recursive:
+				print(f"Processing directory recursively: {cmd_args.path}")
+				epub_paths = get_epub_file_paths(cmd_args.path, recursive=True)
+			else:
+				print(f"Processing directory: {cmd_args.path}")
+				epub_paths = get_epub_file_paths(cmd_args.path)
+
+			print(f"\tFound {len(epub_paths)} epub files inside directory!")
+			for i, epub_path in enumerate(epub_paths, start=1):
+				print(f"\tEpub {i}/{len(epub_paths)}: {green(epub_path)}")
+				process_epub(epub_path, replace=cmd_args.replace)
+		else:
+			print(f"Ignored directory: {cmd_args.path}")
+	else:
+		print(f"Not found: {cmd_args.path}")
 
 
 if __name__ == "__main__":
