@@ -193,15 +193,15 @@ def process_epub(epub_path, cmd_args):
 	css_files = []
 	font_files = []
 
-	for root, _, files in os.walk(temp_dir):
-		for file in files:
-			path = os.path.join(root, file)
-			if file.endswith('.opf'):
-				opf_file = path
-			elif file.endswith('.jpg') or file.endswith('.jpeg'):
-				image_files.append(path)
-			elif file.endswith('.css'):
-				css_files.append(path)
+	filepaths = get_filepaths_in_directory(temp_dir)
+	for filepath in filepaths:
+		filename = os.path.basename(filepath)
+		if filename.endswith('.opf'):
+			opf_file = filepath
+		elif any(filename.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+			image_files.append(filepath)
+		elif filename.endswith('.css'):
+			css_files.append(filepath)
 
 	if opf_file and fonts_should_be_removed:
 		verbose(f"\t\tCleaning OPF file:")
@@ -219,7 +219,6 @@ def process_epub(epub_path, cmd_args):
 		verbose(f"\t\tCleaning {len(font_files)} Font files:")
 		saved_bytes = 0
 
-		filepaths = get_filepaths_in_directory(temp_dir)
 		for idx, font_file in enumerate(font_files, start=1):
 			font_file_name = os.path.basename(font_file)
 			for filepath in filepaths:
