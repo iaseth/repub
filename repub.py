@@ -68,7 +68,7 @@ def get_image_resolution(image_path):
 
 
 
-def remove_font_styles(css_file):
+def remove_font_styles(css_file, idx=0):
 	filename = os.path.basename(css_file)
 	with open(css_file, 'r', encoding='utf-8') as file:
 		css_content = file.read()
@@ -82,7 +82,7 @@ def remove_font_styles(css_file):
 
 	new_size = len(css_content)
 	if new_size == old_size:
-		verbose(f"\t\t\tSkipped CSS: {yellow(filename)} already optimized!")
+		verbose(f"\t\t\t{idx:3}. Skipped CSS: {yellow(filename)} already optimized!")
 		return 0
 
 	with open(css_file, 'w', encoding='utf-8') as file:
@@ -90,7 +90,7 @@ def remove_font_styles(css_file):
 
 	saved_bytes = old_size - new_size
 	saved_percent = 100 * saved_bytes / old_size
-	verbose(f"\t\t\tReduced CSS: {green(filename)} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
+	verbose(f"\t\t\t{idx:3}. Reduced CSS: {green(filename)} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 	return saved_bytes
 
 
@@ -155,6 +155,15 @@ def compress_image(image_file, idx=0, max_image_pixels=720):
 		verbose(f"\t\t\t{idx:3}. Skipped image {yellow(filename):20} => {size}")
 
 
+def get_filepaths_in_directory(dirpath):
+	filepaths = []
+	for root, _, files in os.walk(dirpath):
+		for file in files:
+			filepath = os.path.join(root, file)
+			filepaths.append(filepath)
+	return filepaths
+
+
 def process_epub(epub_path, cmd_args):
 	fonts_should_be_removed = not cmd_args.keep_fonts
 	images_should_be_compressed = not cmd_args.keep_images
@@ -201,8 +210,8 @@ def process_epub(epub_path, cmd_args):
 	if len(css_files) > 0 and fonts_should_be_removed:
 		verbose(f"\t\tCleaning {len(css_files)} CSS files:")
 		saved_bytes = 0
-		for css_file in css_files:
-			saved_bytes += remove_font_styles(css_file)
+		for idx, css_file in enumerate(css_files, start=1):
+			saved_bytes += remove_font_styles(css_file, idx=idx)
 		verbose(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	# Delete font files
@@ -210,15 +219,17 @@ def process_epub(epub_path, cmd_args):
 		verbose(f"\t\tCleaning {len(font_files)} Font files:")
 		saved_bytes = 0
 
-		for font_file in enumerate(font_files):
-			for root, _, files in os.walk(temp_dir):
-				for file in files:
-					if file in font_file or any(file.endswith(ext) for ext in ['.otf', '.ttf', '.woff', '.woff2']):
-						font_path = os.path.join(root, file)
-						size = os.path.getsize(font_path)
-						os.remove(font_path)
-						verbose(f"\t\t\tRemoved font: {green(os.path.basename(font_path))} ({size/1024:.1f} KB)")
-						saved_bytes += size
+		filepaths = get_filepaths_in_directory(temp_dir)
+		for idx, font_file in enumerate(font_files, start=1):
+			font_file_name = os.path.basename(font_file)
+			for filepath in filepaths:
+				filename = os.path.basename(filepath)
+				if filename == font_file_name and any(filename.endswith(ext) for ext in ['.otf', '.ttf', '.woff', '.woff2']):
+					size = os.path.getsize(filepath)
+					os.remove(filepath)
+					verbose(f"\t\t\t{idx:3}. Removed font: {green(os.path.basename(filepath))} ({size/1024:.1f} KB)")
+					saved_bytes += size
+					break
 		verbose(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	if len(image_files) > 0 and max_image_pixels is not None and images_should_be_compressed:
