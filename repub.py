@@ -115,14 +115,14 @@ def remove_custom_fonts(opf_file):
 			manifest.remove(item)
 			font_files.append(href)
 
-	tree.write(opf_file, encoding='utf-8', xml_declaration=True)
-	new_size = os.path.getsize(opf_file)
-
-	saved_bytes = old_size - new_size
-	if saved_bytes == 0:
+	if len(font_files) == 0:
 		verbose(f"\t\t\tSkipped OPF: {yellow(filename)} already optimized")
 		return []
 
+	tree.write(opf_file, encoding='utf-8', xml_declaration=True)
+
+	new_size = os.path.getsize(opf_file)
+	saved_bytes = old_size - new_size
 	saved_percent = 100 * saved_bytes / old_size
 	verbose(f"\t\t\tReduced OPF: {green(os.path.basename(opf_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 
@@ -244,8 +244,8 @@ def process_epub(epub_path, cmd_args):
 	space_saved = original_size - new_size
 	percentage_saved = (space_saved / original_size) * 100
 
-	print(f"\t\tOriginal EPUB size: {filesize_string(size=original_size)}")
-	print(f"\t\t    Lean EPUB size: {filesize_string(filepath=lean_epub_path)}")
+	verbose(f"\t\tOriginal EPUB size: {filesize_string(size=original_size)}")
+	verbose(f"\t\t    Lean EPUB size: {filesize_string(filepath=lean_epub_path)}")
 	print(f"\t\t Total space saved: {space_saved / 1024:.2f} KB ({percentage_saved:.1f}%)")
 
 
