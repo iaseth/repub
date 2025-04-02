@@ -155,7 +155,13 @@ def compress_image(image_file, idx=0, max_image_pixels=720):
 		verbose(f"\t\t\t{idx:3}. Skipped image {yellow(filename):20} => {size}")
 
 
-def process_epub(epub_path, replace=False, max_image_pixels=720):
+def process_epub(epub_path, cmd_args):
+	fonts_should_be_removed = not cmd_args.keep_fonts
+	images_should_be_compressed = not cmd_args.keep_images
+	replace = cmd_args.replace
+	max_image_pixels = 720
+	suffix = 'lean'
+
 	if not os.path.isfile(epub_path):
 		print(f"Not found: {red(epub_path)}"); return
 
@@ -165,7 +171,7 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 	print(f"\tFound EPUB: {green(epub_path)} ({filesize_string(filepath=epub_path)})")
 
 	base_name = os.path.splitext(epub_path)[0]
-	lean_epub_path = epub_path if replace else f"{base_name}-lean.epub"
+	lean_epub_path = epub_path if replace else f"{base_name}-{suffix}.epub"
 	temp_dir = f"{base_name}-temp"
 
 	# Extract EPUB
@@ -188,11 +194,11 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 			elif file.endswith('.css'):
 				css_files.append(path)
 
-	if opf_file:
+	if opf_file and fonts_should_be_removed:
 		verbose(f"\t\tCleaning OPF file:")
 		font_files = remove_custom_fonts(opf_file)
 
-	if len(css_files) > 0:
+	if len(css_files) > 0 and fonts_should_be_removed:
 		verbose(f"\t\tCleaning {len(css_files)} CSS files:")
 		saved_bytes = 0
 		for css_file in css_files:
@@ -200,7 +206,7 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 		verbose(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	# Delete font files
-	if len(font_files) > 0:
+	if len(font_files) > 0 and fonts_should_be_removed:
 		verbose(f"\t\tCleaning {len(font_files)} Font files:")
 		saved_bytes = 0
 
@@ -215,7 +221,7 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 						saved_bytes += size
 		verbose(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
-	if len(image_files) > 0 and max_image_pixels is not None:
+	if len(image_files) > 0 and max_image_pixels is not None and images_should_be_compressed:
 		verbose(f"\t\tCleaning {len(image_files)} Image files:")
 		for idx, image_file in enumerate(image_files, start=1):
 			compress_image(image_file, idx=idx, max_image_pixels=max_image_pixels)
@@ -256,23 +262,25 @@ def get_epub_file_paths(directory: str, recursive: bool = False) -> List[str]:
 
 
 def main():
-	parser = argparse.ArgumentParser(description="repub.py - remove custom fonts from EPUB ebooks")
+	parser = argparse.ArgumentParser(description="repub.py - Minify your EPUB ebooks by remove custom fonts and compressing images.")
 
 	# Positional argument: Path
 	parser.add_argument("path", type=str, help="Path to the file or directory")
 
 	# Boolean flags with short and long options
-	parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+	parser.add_argument("--keep-fonts", action="store_true", help="Don't remove custom fonts")
+	parser.add_argument("--keep-images", action="store_true", help="Don't compress images")
+
 	parser.add_argument("-D", "--directory", action="store_true", help="Process directories as well")
 	parser.add_argument("-R", "--recursive", action="store_true", help="Process directories recursively")
 	parser.add_argument("-r", "--replace", action="store_true", help="Replace original files")
+	parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
 
 	global cmd_args
 	cmd_args = parser.parse_args()
-	verbose(cmd_args)
 
 	if os.path.isfile(cmd_args.path):
-		process_epub(cmd_args.path, replace=cmd_args.replace)
+		process_epub(cmd_args.path, cmd_args)
 	elif os.path.isdir(cmd_args.path):
 		if cmd_args.directory:
 			if cmd_args.recursive:
@@ -285,7 +293,7 @@ def main():
 			print(f"\tFound {len(epub_paths)} epub files inside directory!")
 			for i, epub_path in enumerate(epub_paths, start=1):
 				print(f"\tEpub {i}/{len(epub_paths)}: {green(epub_path)}")
-				process_epub(epub_path, replace=cmd_args.replace)
+				process_epub(epub_path, cmd_args)
 		else:
 			print(f"Ignored directory: {cmd_args.path}")
 	else:
