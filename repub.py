@@ -50,6 +50,13 @@ def verbose(*args, **kwargs):
 
 
 
+def filesize_string(filepath=None, size=0):
+	if filepath:
+		size = os.path.getsize(filepath)
+	return f"{size / 1024:.2f} KB"
+
+
+
 def get_image_resolution(image_path):
 	"""Returns the resolution (width, height) of a JPG/JPEG image."""
 	try:
@@ -75,7 +82,7 @@ def remove_font_styles(css_file):
 
 	new_size = len(css_content)
 	if new_size == old_size:
-		print(f"\t\t\tSkipped CSS: {yellow(filename)} already optimized!")
+		verbose(f"\t\t\tSkipped CSS: {yellow(filename)} already optimized!")
 		return 0
 
 	with open(css_file, 'w', encoding='utf-8') as file:
@@ -83,7 +90,7 @@ def remove_font_styles(css_file):
 
 	saved_bytes = old_size - new_size
 	saved_percent = 100 * saved_bytes / old_size
-	print(f"\t\t\tReduced CSS: {green(filename)} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
+	verbose(f"\t\t\tReduced CSS: {green(filename)} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 	return saved_bytes
 
 
@@ -113,11 +120,11 @@ def remove_custom_fonts(opf_file):
 
 	saved_bytes = old_size - new_size
 	if saved_bytes == 0:
-		print(f"\t\t\tSkipped OPF: {yellow(filename)} already optimized")
+		verbose(f"\t\t\tSkipped OPF: {yellow(filename)} already optimized")
 		return []
 
 	saved_percent = 100 * saved_bytes / old_size
-	print(f"\t\t\tReduced OPF: {green(os.path.basename(opf_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
+	verbose(f"\t\t\tReduced OPF: {green(os.path.basename(opf_file))} {old_size} => {new_size} ({saved_percent:.1f}% saved)")
 
 	return font_files
 
@@ -141,11 +148,11 @@ def compress_image(image_file, idx=0, max_image_pixels=720):
 			with Image.open(image_file) as img:
 				img = img.resize(size_after, Image.LANCZOS)
 				img.save(image_file, optimize=True, quality=85)
-			print(f"\t\t\t{idx:3}. Compressed image {green(filename):20} => {size} to {size_after}")
+			verbose(f"\t\t\t{idx:3}. Compressed image {green(filename):20} => {size} to {size_after}")
 		except Exception as e:
-			print(f"\t\t\t{idx:3}. Error compressing {red(filename)}: {e}")
+			verbose(f"\t\t\t{idx:3}. Error compressing {red(filename)}: {e}")
 	else:
-		print(f"\t\t\t{idx:3}. Skipped image {yellow(filename):20} => {size}")
+		verbose(f"\t\t\t{idx:3}. Skipped image {yellow(filename):20} => {size}")
 
 
 def process_epub(epub_path, replace=False, max_image_pixels=720):
@@ -155,7 +162,7 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 	if not epub_path.endswith('.epub'):
 		print(f"Bad path: {red(epub_path)}"); return
 
-	print(f"\tFound EPUB: {green(epub_path)}")
+	print(f"\tFound EPUB: {green(epub_path)} ({filesize_string(filepath=epub_path)})")
 
 	base_name = os.path.splitext(epub_path)[0]
 	lean_epub_path = epub_path if replace else f"{base_name}-lean.epub"
@@ -182,19 +189,19 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 				css_files.append(path)
 
 	if opf_file:
-		print(f"\t\tCleaning OPF file:")
+		verbose(f"\t\tCleaning OPF file:")
 		font_files = remove_custom_fonts(opf_file)
 
 	if len(css_files) > 0:
-		print(f"\t\tCleaning {len(css_files)} CSS files:")
+		verbose(f"\t\tCleaning {len(css_files)} CSS files:")
 		saved_bytes = 0
 		for css_file in css_files:
 			saved_bytes += remove_font_styles(css_file)
-		print(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
+		verbose(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	# Delete font files
 	if len(font_files) > 0:
-		print(f"\t\tCleaning {len(font_files)} Font files:")
+		verbose(f"\t\tCleaning {len(font_files)} Font files:")
 		saved_bytes = 0
 
 		for font_file in enumerate(font_files):
@@ -204,12 +211,12 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 						font_path = os.path.join(root, file)
 						size = os.path.getsize(font_path)
 						os.remove(font_path)
-						print(f"\t\t\tRemoved font: {green(os.path.basename(font_path))} ({size/1024:.1f} KB)")
+						verbose(f"\t\t\tRemoved font: {green(os.path.basename(font_path))} ({size/1024:.1f} KB)")
 						saved_bytes += size
-		print(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
+		verbose(f"\t\t\t\tSaved {saved_bytes/1024:.1f} KB")
 
 	if len(image_files) > 0 and max_image_pixels is not None:
-		print(f"\t\tCleaning {len(image_files)} Image files:")
+		verbose(f"\t\tCleaning {len(image_files)} Image files:")
 		for idx, image_file in enumerate(image_files, start=1):
 			compress_image(image_file, idx=idx, max_image_pixels=max_image_pixels)
 
@@ -224,15 +231,15 @@ def process_epub(epub_path, replace=False, max_image_pixels=720):
 
 	# Clean up
 	shutil.rmtree(temp_dir)
-	print(f"\tSaved: {green(lean_epub_path)}")
+	print(f"\tSaved EPUB: {green(lean_epub_path)} ({filesize_string(filepath=lean_epub_path)})")
 
 	# Compare sizes
 	new_size = os.path.getsize(lean_epub_path)
 	space_saved = original_size - new_size
 	percentage_saved = (space_saved / original_size) * 100
 
-	print(f"\t\tOriginal EPUB size: {original_size / 1024:.2f} KB")
-	print(f"\t\t    Lean EPUB size: {new_size / 1024:.2f} KB")
+	print(f"\t\tOriginal EPUB size: {filesize_string(size=original_size)}")
+	print(f"\t\t    Lean EPUB size: {filesize_string(filepath=lean_epub_path)}")
 	print(f"\t\t Total space saved: {space_saved / 1024:.2f} KB ({percentage_saved:.1f}%)")
 
 
