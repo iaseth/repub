@@ -169,7 +169,7 @@ def process_epub(epub_path, cmd_args):
 	images_should_be_compressed = not cmd_args.keep_images
 	replace = cmd_args.replace
 	max_image_pixels = cmd_args.pixels or 720
-	suffix = 'lean'
+	suffix = cmd_args.suffix or 'lean'
 
 	if not os.path.isfile(epub_path):
 		print(f"Not found: {red(epub_path)}"); return
@@ -281,6 +281,7 @@ def main():
 	parser.add_argument("--keep-fonts", action="store_true", help="Don't remove custom fonts")
 	parser.add_argument("--keep-images", action="store_true", help="Don't compress images")
 	parser.add_argument("--pixels", type=int, help="Set max pixel size for images")
+	parser.add_argument("--suffix", type=str, help="Set filename suffix")
 
 	parser.add_argument("-D", "--directory", action="store_true", help="Process directories as well")
 	parser.add_argument("-R", "--recursive", action="store_true", help="Process directories recursively")
