@@ -6,11 +6,10 @@ import shutil
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
-from typing import List
 
 from PIL import Image
 from pyrepub.colors import *
-from pyrepub.utils import filesize_string, get_image_resolution
+from pyrepub.utils import filesize_string, get_image_resolution, get_filepaths_in_directory, get_epub_file_paths
 
 
 
@@ -107,15 +106,6 @@ def compress_image(image_file, idx=0, max_image_pixels=720):
 		verbose(f"\t\t\t{idx:3}. Skipped image {yellow(filename):20} => {size}")
 
 
-def get_filepaths_in_directory(dirpath):
-	filepaths = []
-	for root, _, files in os.walk(dirpath):
-		for file in files:
-			filepath = os.path.join(root, file)
-			filepaths.append(filepath)
-	return filepaths
-
-
 def process_epub(epub_path, cmd_args):
 	fonts_should_be_removed = not cmd_args.keep_fonts
 	images_should_be_compressed = not cmd_args.keep_images
@@ -209,17 +199,6 @@ def process_epub(epub_path, cmd_args):
 	verbose(f"\t\tOriginal EPUB size: {filesize_string(size=original_size)}")
 	verbose(f"\t\t    Lean EPUB size: {filesize_string(filepath=lean_epub_path)}")
 	print(f"\t\t Total space saved: {space_saved / 1024:.2f} KB ({percentage_saved:.1f}%)")
-
-
-def get_epub_file_paths(directory: str, recursive: bool = False) -> List[str]:
-	if recursive:
-		return [os.path.join(root, file)
-				for root, _, files in os.walk(directory)
-				for file in files if file.lower().endswith('.epub')]
-	else:
-		return [os.path.join(directory, file)
-				for file in os.listdir(directory)
-				if os.path.isfile(os.path.join(directory, file)) and file.lower().endswith('.epub')]
 
 
 
