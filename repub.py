@@ -277,6 +277,9 @@ def main():
 	# Positional argument: Path
 	parser.add_argument("path", type=str, help="Path to the file or directory")
 
+	parser.add_argument("--title", help="Set the ebook title")
+	parser.add_argument("--author", help="Set the ebook author")
+
 	# Boolean flags with short and long options
 	parser.add_argument("--keep-fonts", action="store_true", help="Don't remove custom fonts")
 	parser.add_argument("--keep-images", action="store_true", help="Don't compress images")
