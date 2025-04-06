@@ -9,62 +9,14 @@ import zipfile
 from typing import List
 
 from PIL import Image
+from pyrepub.colors import *
+from pyrepub.utils import filesize_string, get_image_resolution
 
-
-
-def _colorize(color_code, *args, sep=' '):
-	"""
-	Returns a colored string using ANSI escape codes.
-	"""
-	text = sep.join(map(str, args))
-	return f"\033[{color_code}m{text}\033[0m"
-
-def red(*args, sep=' '):
-	return _colorize(31, *args, sep=sep)
-
-def green(*args, sep=' '):
-	return _colorize(32, *args, sep=sep)
-
-def yellow(*args, sep=' '):
-	return _colorize(33, *args, sep=sep)
-
-def blue(*args, sep=' '):
-	return _colorize(34, *args, sep=sep)
-
-def magenta(*args, sep=' '):
-	return _colorize(35, *args, sep=sep)
-
-def cyan(*args, sep=' '):
-	return _colorize(36, *args, sep=sep)
-
-def white(*args, sep=' '):
-	return _colorize(37, *args, sep=sep)
-
-def normal(*args, sep=' '):
-	return sep.join(map(str, args))
 
 
 def verbose(*args, **kwargs):
 	if cmd_args.verbose:
 		print(*args, **kwargs)
-
-
-
-def filesize_string(filepath=None, size=0):
-	if filepath:
-		size = os.path.getsize(filepath)
-	return f"{size / 1024:.2f} KB"
-
-
-
-def get_image_resolution(image_path):
-	"""Returns the resolution (width, height) of a JPG/JPEG image."""
-	try:
-		with Image.open(image_path) as img:
-			return img.size  # (width, height)
-	except Exception as e:
-		print(f"Error opening {image_path}: {e}")
-		return None
 
 
 
