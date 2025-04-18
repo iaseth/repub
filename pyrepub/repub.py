@@ -110,7 +110,7 @@ def process_epub(epub_path, cmd_args):
 	fonts_should_be_removed = not cmd_args.keep_fonts
 	images_should_be_compressed = not cmd_args.keep_images
 	replace = cmd_args.replace
-	max_image_pixels = cmd_args.pixels or 720
+	max_image_pixels = cmd_args.pixels
 	suffix = cmd_args.suffix or 'lean'
 
 	if not os.path.isfile(epub_path):
@@ -214,12 +214,12 @@ def main():
 	# Boolean flags with short and long options
 	parser.add_argument("--keep-fonts", action="store_true", help="Don't remove custom fonts")
 	parser.add_argument("--keep-images", action="store_true", help="Don't compress images")
-	parser.add_argument("--pixels", type=int, help="Set max pixel size for images")
+	parser.add_argument("--pixels", type=int, default=720, help="Set max pixel size for images")
 	parser.add_argument("--suffix", type=str, help="Set filename suffix")
 
-	parser.add_argument("-D", "--directory", action="store_true", help="Process directories as well")
-	parser.add_argument("-R", "--recursive", action="store_true", help="Process directories recursively")
-	parser.add_argument("-r", "--replace", action="store_true", help="Replace original files")
+	parser.add_argument("-d", "--directory", action="store_true", help="Process directories as well")
+	parser.add_argument("-r", "--recursive", action="store_true", help="Process directories recursively")
+	parser.add_argument("-x", "--replace", action="store_true", help="Replace original files")
 	parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
 
 	global cmd_args
