@@ -2,16 +2,16 @@
 build: zip exe
 
 zip: clean
-	cd repub && zip -r ../repub-temp.zip . -x "*/__pycache__/*"
+	cd pyrepub && zip -r ../repub.zip . -x "*/__pycache__/*"
 
 exe:
-	echo '#!/usr/bin/env python3' | cat - repub-temp.zip > repub.zip && chmod +x repub.zip
-	rm repub-temp.zip
+	echo '#!/usr/bin/env python3' | cat - repub.zip > repub && chmod +x repub
+	rm repub.zip
 
 deploy: build
-	cp repub.zip ~/dev/bin/repub
+	cp repub ~/.local/bin/
 
 clean:
-	rm -f repub-temp.zip repub.zip
+	rm -f repub.zip repub
 	rm -rf repub/**/*.pyc
 	rm -rf repub/**/__pycache__
